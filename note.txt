@@ -1,0 +1,45 @@
+layout:
+- folder name in () and files inside are considered a rout/screen group
+- 
+font:
+- add to fonts folder
+- install expo font
+- update app.json plugin
+!!!!!!!!!!!! make sure font file is the CORRECT/True NAME
+
+
+
+
+
+
+
+Other:
+- keyboard dismiss: react native keyboard manager
+- Expo provides @expo/vector-icons, which includes FontAwesome icons. // npm install @expo/vector-icons // https://fontawesome.com/search?ic=free
+- oauth or auth0 for authentications
+- (cant use)material ui ---- import text imput(try)
+-interface for tsx
+
+
+Prop	Type	Description
+icon	string	FontAwesome6 icon name (e.g., "house")
+color	string	Color of the icon (controlled by tab state)
+size	number	Icon size (default is around 24)
+focused	boolean	Whether the tab is active
+style	object	Custom styles for positioning
+iconStyle	object	Additional styles for the icon itself
+backgroundColor	string	Change background when focused
+onPress	function	Handle tab icon click manually
+badge	number	Add a small notification badge to the icon
+
+
+
+build order:
+files: auth, tabs, other 
+-auth contains onboarding with sign in/out 
+-tabs contains main app
+
+
+
+
+test
