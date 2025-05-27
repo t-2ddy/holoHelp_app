@@ -8,7 +8,6 @@ import TextBubble from '../../components/TextBubble'
 import { chatService } from '../../../lib/chatService';
 import { useGlobalContext } from '../../../context/GlobalProvider';
 
-// Define message type
 interface Message {
   id: string;
   text: string;
@@ -18,9 +17,8 @@ interface Message {
 
 const TowaText = () => {
     const { user } = useGlobalContext();
-    const TOWA_ID = 'towa'; // Character ID for Towa
+    const TOWA_ID = 'towa';
     
-    // Add missing state variables
     const [message, setMessage] = useState('');
     const [messages, setMessages] = useState<Message[]>([]);
     const [keyboardHeight, setKeyboardHeight] = useState(0);

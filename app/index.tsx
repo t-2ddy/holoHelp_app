@@ -29,10 +29,8 @@ export default function Index(): JSX.Element {
             HoloHelp
           </Text>
 
-          {/* Image Component */}
           <Image source={towaQuestion} className="size-72" />
 
-          {/* Text Block */}
           <View className="flex flex-row flex-wrap text-center mt-4 justify-center">
             <Text
               style={{ fontFamily: "Sour Gummy Black" }}
@@ -54,7 +52,6 @@ export default function Index(): JSX.Element {
             </Text>
           </View>
 
-          {/* Description Text */}
           <Text
             style={{ fontFamily: "Sour Gummy Black" }}
             className="text-stone-800 text-lg text-center mt opacity-80"
