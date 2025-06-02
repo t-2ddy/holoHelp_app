@@ -155,7 +155,7 @@ const TowaText = () => {
         setTimeout(() => {
           const response = {
             id: (Date.now() + 1).toString(),
-            text: "I received your message! (This is a placeholder for your Python backend response)",
+            text: "hiiiiiiiiiii :D",
             isUser: false,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           };
@@ -189,42 +189,46 @@ const TowaText = () => {
         >
             <SafeAreaView className="flex-1">
                 <View className='flex-1'>
-                    <View className='flex-row justify-center items-center min-h-20 w-max'>
+                    <View className='flex-row items-center justify-between w-full px-6 py-4'>
                         <TouchableOpacity
-                            style={{ position: 'absolute', left: 0, padding: 24 }}
+                            className='p-2'
                             activeOpacity={.6}
                             onPress={() => router.push('../')}
-                            >
-                                <FontAwesome6
-                                    name="angle-left"
-                                    size={26}
-                                    color="#ded9f6"
-                                    solid={'focused'}
-                                />
+                        >
+                            <FontAwesome6
+                                name="angle-left"
+                                size={26}
+                                color="#ded9f6"
+                                solid={'focused'}
+                            />
                         </TouchableOpacity>
-                        <View className='justify-center items-center flex-col'>
+
+                        <View className='flex-1 justify-center items-center'>
                             <Image
                                 source={towaClose}
-                                className='size-20 rounded-full'
+                                className='size-12 rounded-full mb-1'
+                                style={{ width: 48, height: 48 }}
+
                             />
                             <Text
-                            style={{ fontFamily: "Sour Gummy Black" }}
-                            className='text-xl mt-1'
+                                style={{ fontFamily: "Sour Gummy Black" }}
+                                className='text-xl'
                             >
                                 Towa
                             </Text>
                         </View>
+
                         <TouchableOpacity
-                            style={{ position: 'absolute', right: 0, padding: 24 }}
+                            className='p-2'
                             activeOpacity={.6}
                             onPress={() => router.push('../../(tabs)/home')}
-                            >
-                                <FontAwesome6
-                                    name="list-check"
-                                    size={26}
-                                    color="#ded9f6"
-                                    solid={'focused'}
-                                />
+                        >
+                            <FontAwesome6
+                                name="list-check"
+                                size={26}
+                                color="#ded9f6"
+                                solid={'focused'}
+                            />
                         </TouchableOpacity>
                     </View>
                     

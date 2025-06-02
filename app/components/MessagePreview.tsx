@@ -4,7 +4,6 @@ import { router } from 'expo-router';
 import { chatService } from '../../lib/chatService';
 import { useGlobalContext } from '../../context/GlobalProvider';
 
-// Define interfaces for component props and message data
 interface MessagePreviewProps {
   characterId: string;
   characterName: string;
@@ -13,7 +12,6 @@ interface MessagePreviewProps {
   style?: string;
 }
 
-// Define User interface
 interface User {
   $id: string;
   email?: string;
@@ -108,7 +106,6 @@ const MessagePreview: React.FC<MessagePreviewProps> = ({
     // }
   };
 
-  // Default onPress handler if none provided
   const handlePress = onPress || (() => router.push(`../screens/messages/${characterId.toLowerCase()}Text`));
 
   return (
@@ -120,7 +117,8 @@ const MessagePreview: React.FC<MessagePreviewProps> = ({
         <View className='flex-row items-center flex-1'>
           <Image
             source={characterImage}
-            className='size-16 rounded-full'
+            className='rounded-full size-12'
+            style={{ width: 48, height: 48 }}
           />
           <View className='ml-4 flex-1'>
             <Text

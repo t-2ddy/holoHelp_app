@@ -21,11 +21,11 @@ const chats = () => {
                     className='text-4xl p-4 text-stone-800 mt-8'
                     style={{ fontFamily: "Sour Gummy Black" }}
                 >
-                    Messages
+                    Chats
                 </Text>
                 
                 <ScrollView contentContainerStyle={{ height: "100%" }}>
-                    <View className='w-full h-full p-4 px-4'>
+                    <View className='flex sm:w-full sm:h-full p-4 px-4'>
                         {characters.map(character => (
                             <MessagePreview
                                 key={character.id}
