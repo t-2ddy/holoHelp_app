@@ -1,3 +1,5 @@
+// app/screens/messages/towaText.tsx - Updated to use backend API
+
 import { View, Text, Image, ScrollView, SafeAreaView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Animated, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native'
 import towaClose from '../../../assets/images/towa_close.jpg'
 import { FontAwesome6 } from '@expo/vector-icons'
@@ -5,7 +7,7 @@ import { router } from 'expo-router'
 import { useState, useEffect, useRef } from 'react'
 import TextBubble from '../../components/TextBubble'
 
-import { chatService } from '../../../lib/chatService';
+import { chatService } from '../../../lib/apiService';
 import { useGlobalContext } from '../../../context/GlobalProvider';
 
 interface Message {
@@ -17,10 +19,10 @@ interface Message {
 
 const TowaText = () => {
     const { user } = useGlobalContext();
-    const TOWA_ID = 'towa';
     
     const [message, setMessage] = useState('');
     const [messages, setMessages] = useState<Message[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
     const [keyboardHeight, setKeyboardHeight] = useState(0);
     const keyboardAnim = useRef(new Animated.Value(0)).current;
     const scrollViewRef = useRef<ScrollView>(null);
@@ -57,11 +59,11 @@ const TowaText = () => {
     }, []);
     
     useEffect(() => {
-      if (messages.length > 0) {
-        setTimeout(() => {
-          scrollViewRef.current?.scrollToEnd({ animated: true });
-        }, 100);
-      }
+        if (messages.length > 0) {
+            setTimeout(() => {
+                scrollViewRef.current?.scrollToEnd({ animated: true });
+            }, 100);
+        }
     }, [messages]);
     
     const dismissKeyboard = () => {
@@ -69,116 +71,122 @@ const TowaText = () => {
     };
     
     useEffect(() => {
-      if (user) {
-        loadConversation();
-      } else {
-        setMessages([
-          {
-            id: '1',
-            text: 'Welcome! Please log in to see your conversation history.',
-            isUser: false,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }
-        ]);
-      }
+        if (user) {
+            loadConversation();
+            // Test backend connection
+            testBackendConnection();
+        } else {
+            setMessages([
+                {
+                    id: '1',
+                    text: 'Welcome! Please log in to chat with me.',
+                    isUser: false,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                }
+            ]);
+        }
     }, [user]);
+
+    const testBackendConnection = async () => {
+        try {
+            await chatService.healthCheck();
+            console.log('✅ Backend connection successful');
+        } catch (error) {
+            console.error('❌ Backend connection failed:', error);
+            Alert.alert('Connection Error', 'Cannot connect to the bot service. Please check if the backend is running.');
+        }
+    };
     
     const loadConversation = async () => {
-      if (!user) return;
-      
-      try {
-        const messages = await chatService.getConversation(user.$id, TOWA_ID);
+        if (!user) return;
         
-        if (messages && messages.length > 0) {
-          const formattedMessages = messages.map(msg => ({
-            id: msg.$id,
-            text: msg.message,
-            isUser: msg.sender_id === user.$id,
-            timestamp: new Date(msg.created_at).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit'
-            })
-          }));
-          
-          setMessages(formattedMessages);
-        } else {
-          setMessages([{
-            id: 'welcome',
-            text: "Hi there! I'm Towa. How can I help you today?",
-            isUser: false,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }]);
+        try {
+            setIsLoading(true);
+            const history = await chatService.getChatHistory(user.$id, 20);
+            
+            if (history && history.length > 0) {
+                const formattedMessages = history.map(msg => ({
+                    id: msg.id,
+                    text: msg.content,
+                    isUser: msg.role === 'user',
+                    timestamp: new Date(msg.timestamp).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })
+                }));
+                
+                setMessages(formattedMessages);
+            } else {
+                setMessages([{
+                    id: 'welcome',
+                    text: "Konyappi~ ⁎˃ᆺ˂⁎ I'm Towa! How can I help you today? You can ask me to add tasks, mark them complete, or just chat!",
+                    isUser: false,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                }]);
+            }
+        } catch (error) {
+            console.error('Error loading conversation:', error);
+            setMessages([{
+                id: 'error',
+                text: "Sorry, I couldn't load our previous conversations. Let's start fresh! ⁎˃ᆺ˂⁎",
+                isUser: false,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }]);
+        } finally {
+            setIsLoading(false);
         }
-      } catch (error) {
-        console.error('Error loading conversation:', error);
-        setMessages([{
-          id: 'error',
-          text: "Sorry, I couldn't load our previous conversations. Let's start a new one!",
-          isUser: false,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }]);
-      }
     };
     
     const sendMessage = async () => {
-      if (!message.trim()) return;
-      
-      const newMessage = {
-        id: Date.now().toString(),
-        text: message.trim(),
-        isUser: true,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      
-      setMessages(prevMessages => [...prevMessages, newMessage]);
-      setMessage('');
-      
-      if (!user) {
-        setTimeout(() => {
-          const response = {
-            id: (Date.now() + 1).toString(),
-            text: "You'll need to log in to save our conversation. For now, I can still chat with you!",
-            isUser: false,
+        if (!message.trim() || isLoading) return;
+        
+        if (!user) {
+            Alert.alert('Please log in', 'You need to be logged in to chat with Towa.');
+            return;
+        }
+        
+        const userMessage = {
+            id: Date.now().toString(),
+            text: message.trim(),
+            isUser: true,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          };
-          
-          setMessages(prevMessages => [...prevMessages, response]);
-        }, 1000);
-        
-        Keyboard.dismiss();
-        return;
-      }
-      
-      try {
-        await chatService.sendMessage(user.$id, TOWA_ID, message.trim());
-        
-        setTimeout(() => {
-          const response = {
-            id: (Date.now() + 1).toString(),
-            text: "hiiiiiiiiiii :D",
-            isUser: false,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          };
-          
-          setMessages(prevMessages => [...prevMessages, response]);
-          
-          chatService.sendMessage(TOWA_ID, user.$id, response.text);
-        }, 1000);
-        
-      } catch (error) {
-        console.error('Error sending message:', error);
-        
-        const errorMsg = {
-          id: (Date.now() + 1).toString(),
-          text: "Sorry, I couldn't send your message. Please try again.",
-          isUser: false,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         
-        setMessages(prevMessages => [...prevMessages, errorMsg]);
-      }
-      
-      Keyboard.dismiss();
+        // Add user message immediately
+        setMessages(prevMessages => [...prevMessages, userMessage]);
+        const messageToSend = message.trim();
+        setMessage('');
+        setIsLoading(true);
+        
+        try {
+            // Send to backend (which handles OpenAI + function calls)
+            const botResponse = await chatService.sendMessage(user.$id, messageToSend);
+            
+            // Add bot response
+            const botMessage = {
+                id: (Date.now() + 1).toString(),
+                text: botResponse,
+                isUser: false,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            
+            setMessages(prevMessages => [...prevMessages, botMessage]);
+            
+        } catch (error) {
+            console.error('Error sending message:', error);
+            
+            const errorMsg = {
+                id: (Date.now() + 1).toString(),
+                text: "ಠ_ಠ Sorry, I'm having trouble right now. Please try again!",
+                isUser: false,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            
+            setMessages(prevMessages => [...prevMessages, errorMsg]);
+        } finally {
+            setIsLoading(false);
+            Keyboard.dismiss();
+        }
     };
    
     return (
@@ -208,13 +216,12 @@ const TowaText = () => {
                                 source={towaClose}
                                 className='size-12 rounded-full mb-1'
                                 style={{ width: 48, height: 48 }}
-
                             />
                             <Text
                                 style={{ fontFamily: "Sour Gummy Black" }}
                                 className='text-xl'
                             >
-                                Towa
+                                Towa {isLoading ? '(typing...)' : ''}
                             </Text>
                         </View>
 
@@ -247,6 +254,13 @@ const TowaText = () => {
                                     timestamp={msg.timestamp}
                                   />
                                 ))}
+                                {isLoading && (
+                                    <View className="flex-row justify-start">
+                                        <View className="bg-towa3 rounded-2xl rounded-tl-none p-3 max-w-[80%]">
+                                            <Text className="text-stone-800">Towa is thinking... ⁎˃ᆺ˂⁎</Text>
+                                        </View>
+                                    </View>
+                                )}
                             </ScrollView>
                             <Animated.View className="flex-row items-center px-2 py-2 bg-towaprimary border-0">
                               <View className="flex-1 flex-row items-center bg-towa3 rounded-full px-4 py-2 mr-2">
@@ -254,10 +268,11 @@ const TowaText = () => {
                                     className="flex-1 max-h-12 items-center justify-center"
                                     value={message}
                                     onChangeText={setMessage}
-                                    placeholder="message"
+                                    placeholder="Ask Towa to add tasks, mark them done, or just chat!"
                                     placeholderTextColor="#8e8e93"
                                     multiline
                                     scrollEnabled={true}
+                                    editable={!isLoading}
                                     style={{
                                         textAlignVertical: 'center'
                                     }}
@@ -265,13 +280,13 @@ const TowaText = () => {
                               </View>
                               <TouchableOpacity 
                                   className="h-8 w-8 rounded-full bg-towasecondary items-center justify-center"
-                                  disabled={!message.trim()}
+                                  disabled={!message.trim() || isLoading}
                                   onPress={sendMessage}
                               >
                                   <FontAwesome6
                                       name="paper-plane"
                                       size={16}
-                                      color={message.trim() ? "white" : "#8e8e93"}
+                                      color={message.trim() && !isLoading ? "white" : "#8e8e93"}
                                       solid
                                   />
                               </TouchableOpacity>
