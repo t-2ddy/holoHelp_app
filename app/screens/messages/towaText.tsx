@@ -1,5 +1,3 @@
-// app/screens/messages/towaText.tsx - Updated to use backend API
-
 import { View, Text, Image, ScrollView, SafeAreaView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Animated, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native'
 import towaClose from '../../../assets/images/towa_close.jpg'
 import { FontAwesome6 } from '@expo/vector-icons'
@@ -73,7 +71,6 @@ const TowaText = () => {
     useEffect(() => {
         if (user) {
             loadConversation();
-            // Test backend connection
             testBackendConnection();
         } else {
             setMessages([
@@ -90,9 +87,9 @@ const TowaText = () => {
     const testBackendConnection = async () => {
         try {
             await chatService.healthCheck();
-            console.log('✅ Backend connection successful');
+            console.log('Backend connection successful');
         } catch (error) {
-            console.error('❌ Backend connection failed:', error);
+            console.error('Backend connection failed:', error);
             Alert.alert('Connection Error', 'Cannot connect to the bot service. Please check if the backend is running.');
         }
     };
@@ -152,17 +149,14 @@ const TowaText = () => {
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         
-        // Add user message immediately
         setMessages(prevMessages => [...prevMessages, userMessage]);
         const messageToSend = message.trim();
         setMessage('');
         setIsLoading(true);
         
         try {
-            // Send to backend (which handles OpenAI + function calls)
             const botResponse = await chatService.sendMessage(user.$id, messageToSend);
             
-            // Add bot response
             const botMessage = {
                 id: (Date.now() + 1).toString(),
                 text: botResponse,
