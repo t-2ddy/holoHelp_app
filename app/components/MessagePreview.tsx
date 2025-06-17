@@ -1,7 +1,7 @@
 import { View, Text, Image, TouchableOpacity } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { chatService } from '../../lib/chatService';
+import { chatService } from '../../lib/apiService';
 import { useGlobalContext } from '../../context/GlobalProvider';
 
 interface MessagePreviewProps {
@@ -43,14 +43,14 @@ const MessagePreview: React.FC<MessagePreviewProps> = ({
       }
 
       try {
-        const conversation = await chatService.getConversation(user.$id, characterId);
+        const conversation = await chatService.getChatHistory(user.$id, 1);
         
         if (conversation && conversation.length > 0) {
-          const mostRecent = conversation[conversation.length - 1];
+          const mostRecent = conversation[0];
           setLastMessage({
-            message: mostRecent.message,
-            created_at: mostRecent.created_at,
-            sender_id: mostRecent.sender_id
+            message: mostRecent.content || mostRecent.message || 'No message content',
+            created_at: mostRecent.timestamp || mostRecent.created_at || new Date().toISOString(),
+            sender_id: mostRecent.userId || mostRecent.sender_id || user.$id
           });
         }
       } catch (error) {
@@ -75,7 +75,7 @@ const MessagePreview: React.FC<MessagePreviewProps> = ({
     const prefix = isFromUser ? 'You: ' : '';
     
     const messageText = lastMessage.message.length > 30
-      ? `${lastMessage.message.substring(0, 30)}...`
+      ? `${lastMessage.message.substring(0, 50)}...`
       : lastMessage.message;
     
     return `${prefix}${messageText}`;
@@ -88,22 +88,18 @@ const MessagePreview: React.FC<MessagePreviewProps> = ({
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - messageDate.getTime()) / (1000 * 60 * 60 * 24));
     
-    // Today: show time
-    // if (diffDays === 0) {
-    //   return messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    // }
-    // // Yesterday: show "Yesterday"
-    // else if (diffDays === 1) {
-    //   return 'Yesterday';
-    // }
-    // // Within a week: show day name
-    // else if (diffDays < 7) {
-    //   return messageDate.toLocaleDateString([], { weekday: 'short' });
-    // }
-    // // Older: show date
-    // else {
-    //   return messageDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    // }
+    if (diffDays === 0) {
+      return messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    else if (diffDays === 1) {
+      return 'Yesterday';
+    }
+    else if (diffDays < 7) {
+      return messageDate.toLocaleDateString([], { weekday: 'short' });
+    }
+    else {
+      return messageDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
   };
 
   const handlePress = onPress || (() => router.push(`../screens/messages/${characterId.toLowerCase()}Text`));
@@ -128,7 +124,8 @@ const MessagePreview: React.FC<MessagePreviewProps> = ({
               {characterName}
             </Text>
             <Text
-              className='text-stone-800 opacity-70'
+              style={{ fontFamily: "Sour Gummy Black" }}
+              className='text-stone-800 opacity-70 text-lg'
               numberOfLines={1}
               ellipsizeMode='tail'
             >
@@ -136,9 +133,9 @@ const MessagePreview: React.FC<MessagePreviewProps> = ({
             </Text>
           </View>
         </View>
-        <Text className='text-xs text-stone-800 opacity-50 ml-2'>
+        {/* <Text className='text-xs text-stone-800 opacity-50 ml-2'>
           {getTimeDisplay()}
-        </Text>
+        </Text> */}
       </View>
     </TouchableOpacity>
   );

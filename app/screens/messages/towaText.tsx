@@ -71,7 +71,6 @@ const TowaText = () => {
     useEffect(() => {
         if (user) {
             loadConversation();
-            testBackendConnection();
         } else {
             setMessages([
                 {
@@ -83,16 +82,6 @@ const TowaText = () => {
             ]);
         }
     }, [user]);
-
-    const testBackendConnection = async () => {
-        try {
-            await chatService.healthCheck();
-            console.log('Backend connection successful');
-        } catch (error) {
-            console.error('Backend connection failed:', error);
-            Alert.alert('Connection Error', 'Cannot connect to the bot service. Please check if the backend is running.');
-        }
-    };
     
     const loadConversation = async () => {
         if (!user) return;
@@ -110,7 +99,7 @@ const TowaText = () => {
                         hour: '2-digit',
                         minute: '2-digit'
                     })
-                }));
+                })).reverse();
                 
                 setMessages(formattedMessages);
             } else {
@@ -195,7 +184,7 @@ const TowaText = () => {
                         <TouchableOpacity
                             className='p-2'
                             activeOpacity={.6}
-                            onPress={() => router.push('../')}
+                            onPress={() => router.replace('/(tabs)/chats')}
                         >
                             <FontAwesome6
                                 name="angle-left"
