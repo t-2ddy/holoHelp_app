@@ -1,219 +1,292 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Alert, Dimensions } from 'react-native';
-import { WebView } from 'react-native-webview';
-import { client, config } from '../../lib/appwrite';
-import { Databases, Query } from 'react-native-appwrite';
+import { View, Text, Image, ScrollView, SafeAreaView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Animated, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native'
+import towaClose from '../../../assets/images/towa_close.jpg'
+import { FontAwesome6 } from '@expo/vector-icons'
+import { router } from 'expo-router'
+import { useState, useEffect, useRef } from 'react'
+import TextBubble from '../../components/TextBubble'
+import TodoPopup from '@/app/components/TodoPopup'
 
-const databases = new Databases(client);
-const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
+import { chatService } from '../../../lib/apiService';
+import { useGlobalContext } from '../../../context/GlobalProvider';
 
-interface YouTubeShort {
-  $id: string;
-  video_id: string;
-  title: string;
-  description: string;
-  channel_id: string;
-  channel_icon: string;
+interface Message {
+  id: string;
+  text: string;
+  isUser: boolean;
+  timestamp: string;
 }
 
-const YouTubeShortsPage: React.FC = () => {
-  const [shorts, setShorts] = useState<YouTubeShort[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const scrollViewRef = useRef<ScrollView>(null);
+const TowaText = () => {
+    const { user } = useGlobalContext();
+    
+    const [message, setMessage] = useState('');
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [showTodoPopup, setShowTodoPopup] = useState(false);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
+    const keyboardAnim = useRef(new Animated.Value(0)).current;
+    const scrollViewRef = useRef<ScrollView>(null);
+    
+    useEffect(() => {
+        const keyboardWillShowListener = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+            (e) => {
+                setKeyboardHeight(e.endCoordinates.height);
+                Animated.timing(keyboardAnim, {
+                    toValue: e.endCoordinates.height,
+                    duration: 250,
+                    useNativeDriver: false,
+                }).start();
+            }
+        );
 
-  useEffect(() => {
-    fetchShorts();
-  }, []);
+        const keyboardWillHideListener = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+            () => {
+                setKeyboardHeight(0);
+                Animated.timing(keyboardAnim, {
+                    toValue: 0,
+                    duration: 200,
+                    useNativeDriver: false,
+                }).start();
+            }
+        );
 
-  const fetchShorts = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await databases.listDocuments(
-        config.databaseId,
-        config.youtubeShortsCollectionID,
-        [Query.limit(20), Query.orderDesc('$createdAt')]
-      );
-      
-      setShorts(response.documents as YouTubeShort[]);
-    } catch (error: any) {
-      console.error('Error fetching shorts:', error);
-      setError(error.message || 'Failed to load shorts');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchShorts();
-  };
-
-  const createYouTubeEmbedHTML = (videoId: string) => {
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <style>
-          body {
-            margin: 0;
-            padding: 0;
-            background: black;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-          }
-          iframe {
-            border: none;
-            width: 100vw;
-            height: 100vh;
-          }
-        </style>
-      </head>
-      <body>
-        <iframe
-          src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=1&rel=0&modestbranding=1&fs=1&playsinline=1"
-          allow="autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-          allowfullscreen
-        ></iframe>
-      </body>
-      </html>
-    `;
-  };
-
-  const handleScroll = (event: any) => {
-    const { contentOffset, layoutMeasurement } = event.nativeEvent;
-    const currentPage = Math.round(contentOffset.y / layoutMeasurement.height);
-    setCurrentIndex(currentPage);
-  };
-
-  if (loading && !refreshing) {
-    return (
-      <View className="flex-1 justify-center items-center bg-towasecondary">
-        <ActivityIndicator size="large" color="#8058ac" />
-        <Text 
-          className="text-xl text-stone-800 mt-4"
-          style={{ fontFamily: "Sour Gummy Black" }}
-        >
-          Loading shorts...
-        </Text>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View className="flex-1 justify-center items-center bg-towasecondary p-4">
-        <Text 
-          className="text-xl text-red-600 text-center mb-4"
-          style={{ fontFamily: "Sour Gummy Black" }}
-        >
-          {error}
-        </Text>
-        <TouchableOpacity 
-          onPress={fetchShorts}
-          className="bg-towagreen p-3 rounded-xl"
-        >
-          <Text 
-            className="text-stone-800"
-            style={{ fontFamily: "Sour Gummy Black" }}
-          >
-            Try Again
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  if (shorts.length === 0) {
-    return (
-      <View className="flex-1 justify-center items-center bg-towasecondary p-4">
-        <Text 
-          className="text-xl text-stone-800 text-center"
-          style={{ fontFamily: "Sour Gummy Black" }}
-        >
-          No shorts available yet. Run your scraper to collect some videos!
-        </Text>
-      </View>
-    );
-  }
-
-  return (
-    <View className="flex-1 bg-black">
-      <ScrollView
-        ref={scrollViewRef}
-        pagingEnabled
-        showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        return () => {
+            keyboardWillShowListener.remove();
+            keyboardWillHideListener.remove();
+        };
+    }, []);
+    
+    useEffect(() => {
+        if (messages.length > 0) {
+            setTimeout(() => {
+                scrollViewRef.current?.scrollToEnd({ animated: true });
+            }, 100);
         }
-      >
-        {shorts.map((short, index) => (
-          <View 
-            key={short.$id} 
-            style={{ 
-              width: screenWidth, 
-              height: screenHeight 
-            }}
-          >
-            <WebView
-              source={{ html: createYouTubeEmbedHTML(short.video_id) }}
-              style={{ flex: 1 }}
-              allowsInlineMediaPlayback
-              mediaPlaybackRequiresUserAction={false}
-              javaScriptEnabled
-              domStorageEnabled
-              startInLoadingState
-              scalesPageToFit
-              bounces={false}
-              scrollEnabled={false}
-              renderLoading={() => (
-                <View className="flex-1 justify-center items-center bg-black">
-                  <ActivityIndicator size="large" color="white" />
-                </View>
-              )}
-            />
+    }, [messages]);
+    
+    const dismissKeyboard = () => {
+        Keyboard.dismiss();
+    };
+    
+    useEffect(() => {
+        if (user) {
+            loadConversation();
+        } else {
+            setMessages([
+                {
+                    id: '1',
+                    text: 'Welcome! Please log in to chat with me.',
+                    isUser: false,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                }
+            ]);
+        }
+    }, [user]);
+    
+    const loadConversation = async () => {
+        if (!user) return;
+        
+        try {
+            setIsLoading(true);
+            const history = await chatService.getChatHistory(user.$id, 20);
             
-            {/* Video Info Overlay */}
-            <View className="absolute bottom-20 left-4 right-16 z-10">
-              <Text 
-                className="text-white text-lg mb-2 font-bold"
-                style={{ fontFamily: "Sour Gummy Black" }}
-                numberOfLines={2}
-              >
-                {short.title}
-              </Text>
-              <Text 
-                className="text-white text-sm opacity-80"
-                numberOfLines={3}
-              >
-                {short.description.length > 100 
-                  ? `${short.description.substring(0, 100)}...` 
-                  : short.description}
-              </Text>
-            </View>
+            if (history && history.length > 0) {
+                const formattedMessages = history.map(msg => ({
+                    id: msg.id,
+                    text: msg.content,
+                    isUser: msg.role === 'user',
+                    timestamp: new Date(msg.timestamp).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })
+                })).reverse();
+                
+                setMessages(formattedMessages);
+            } else {
+                setMessages([{
+                    id: 'welcome',
+                    text: "Konyappi~ ⁎˃ᆺ˂⁎ I'm Towa! How can I help you today? You can ask me to add tasks, mark them complete, or just chat!",
+                    isUser: false,
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                }]);
+            }
+        } catch (error) {
+            console.error('Error loading conversation:', error);
+            setMessages([{
+                id: 'error',
+                text: "Sorry, I couldn't load our previous conversations. Let's start fresh! ⁎˃ᆺ˂⁎",
+                isUser: false,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
+    const sendMessage = async () => {
+        if (!message.trim() || isLoading) return;
+        
+        if (!user) {
+            Alert.alert('Please log in', 'You need to be logged in to chat with Towa.');
+            return;
+        }
+        
+        const userMessage = {
+            id: Date.now().toString(),
+            text: message.trim(),
+            isUser: true,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        
+        setMessages(prevMessages => [...prevMessages, userMessage]);
+        const messageToSend = message.trim();
+        setMessage('');
+        setIsLoading(true);
+        
+        try {
+            const botResponse = await chatService.sendMessage(user.$id, messageToSend);
+            
+            const botMessage = {
+                id: (Date.now() + 1).toString(),
+                text: botResponse,
+                isUser: false,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            
+            setMessages(prevMessages => [...prevMessages, botMessage]);
+            
+        } catch (error) {
+            console.error('Error sending message:', error);
+            
+            const errorMsg = {
+                id: (Date.now() + 1).toString(),
+                text: "ಠ_ಠ Sorry, I'm having trouble right now. Please try again!",
+                isUser: false,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            
+            setMessages(prevMessages => [...prevMessages, errorMsg]);
+        } finally {
+            setIsLoading(false);
+            Keyboard.dismiss();
+        }
+    };
+   
+    return (
+        <KeyboardAvoidingView 
+            className='flex-1 bg-towaprimary'
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
+            <SafeAreaView className="flex-1">
+                <View className='flex-1'>
+                    <View className='flex-row items-center justify-between w-full px-6 py-4'>
+                        {/* <TouchableOpacity
+                            className='p-2'
+                            activeOpacity={.6}
+                            onPress={() => router.replace('/(tabs)/chats')}
+                        >
+                            <FontAwesome6
+                                name="angle-left"
+                                size={26}
+                                color="#ded9f6"
+                                solid={'focused'}
+                            />
+                        </TouchableOpacity> */}
 
-            {/* Video Counter */}
-            <View className="absolute top-12 right-4 z-10">
-              <Text className="text-white text-sm opacity-70">
-                {index + 1} / {shorts.length}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </ScrollView>
-    </View>
-  );
-};
+                        <View className='flex-1 justify-center items-center'>
+                            <Image
+                                source={towaClose}
+                                className='size-12 rounded-full mb-1'
+                                style={{ width: 48, height: 48 }}
+                            />
+                            <Text
+                                style={{ fontFamily: "Sour Gummy Black" }}
+                                className='text-xl'
+                            >
+                                Towa {isLoading ? '(typing...)' : ''}
+                            </Text>
+                        </View>
 
-export default YouTubeShortsPage;
+                        <TouchableOpacity
+                            className='p-2'
+                            activeOpacity={.6}
+                            onPress={() => setShowTodoPopup(true)}
+                        >
+                            <FontAwesome6
+                                name="list-check"
+                                size={26}
+                                color="#ded9f6"
+                                solid={'focused'}
+                            />
+                        </TouchableOpacity>
+                    </View>
+                    
+                    <TouchableWithoutFeedback onPress={dismissKeyboard}>
+                        <View className='bg-towasecondary flex-1 w-full mt-2'>
+                            <ScrollView 
+                              ref={scrollViewRef}
+                              className="flex-1 px-3 py-2"
+                              contentContainerStyle={{ paddingBottom: 10 }}
+                            >
+                                {messages.map((msg) => (
+                                  <TextBubble 
+                                    key={msg.id} 
+                                    message={msg.text} 
+                                    isUser={msg.isUser} 
+                                    timestamp={msg.timestamp}
+                                  />
+                                ))}
+                                {isLoading && (
+                                    <View className="flex-row justify-start">
+                                        <View className="bg-towa3 rounded-2xl rounded-tl-none p-3 max-w-[80%]">
+                                            <Text className="text-stone-800">Towa is thinking... ⁎˃ᆺ˂⁎</Text>
+                                        </View>
+                                    </View>
+                                )}
+                            </ScrollView>
+                            <Animated.View className="flex-row items-center px-2 py-2 bg-towaprimary border-0">
+                              <View className="flex-1 flex-row items-center bg-towa3 rounded-full px-4 py-2 mr-2">
+                                <TextInput
+                                    className="flex-1 max-h-12 items-center justify-center"
+                                    value={message}
+                                    onChangeText={setMessage}
+                                    placeholder="Ask Towa to add tasks, mark them done, or just chat!"
+                                    placeholderTextColor="#8e8e93"
+                                    multiline
+                                    scrollEnabled={true}
+                                    editable={!isLoading}
+                                    style={{
+                                        textAlignVertical: 'center'
+                                    }}
+                                />
+                              </View>
+                              <TouchableOpacity 
+                                  className="h-8 w-8 rounded-full bg-towasecondary items-center justify-center"
+                                  disabled={!message.trim() || isLoading}
+                                  onPress={sendMessage}
+                              >
+                                  <FontAwesome6
+                                      name="paper-plane"
+                                      size={16}
+                                      color={message.trim() && !isLoading ? "white" : "#8e8e93"}
+                                      solid
+                                  />
+                              </TouchableOpacity>
+                            </Animated.View>
+                        </View>
+                    </TouchableWithoutFeedback>
+                </View>
+            </SafeAreaView>
+
+            <TodoPopup 
+                visible={showTodoPopup} 
+                onClose={() => setShowTodoPopup(false)} 
+            />
+        </KeyboardAvoidingView>
+    )
+}
+
+export default TowaText
