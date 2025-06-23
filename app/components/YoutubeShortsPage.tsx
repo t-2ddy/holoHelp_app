@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Alert, Dimensions } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, ActivityIndicator, Alert, Dimensions , TouchableOpacity} from 'react-native';
 import { WebView } from 'react-native-webview';
 import { client, config } from '../../lib/appwrite';
 import { Databases, Query } from 'react-native-appwrite';
@@ -35,7 +35,7 @@ const YouTubeShortsPage: React.FC = () => {
 
       const response = await databases.listDocuments(
         config.databaseId,
-        config.youtubeShortsCollectionID,
+        process.env.YOUTUBE_SHORTS_COLLECTION_ID || 'your_collection_id',
         [Query.limit(20), Query.orderDesc('$createdAt')]
       );
       
