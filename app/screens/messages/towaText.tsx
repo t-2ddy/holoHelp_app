@@ -181,7 +181,7 @@ const TowaText = () => {
             <SafeAreaView className="flex-1">
                 <View className='flex-1'>
                     <View className='flex-row items-center justify-between w-full px-6 py-4'>
-                        <TouchableOpacity
+                        {/* <TouchableOpacity
                             className='p-2'
                             activeOpacity={.6}
                             onPress={() => router.replace('/(tabs)/chats')}
@@ -192,7 +192,7 @@ const TowaText = () => {
                                 color="#ded9f6"
                                 solid={'focused'}
                             />
-                        </TouchableOpacity>
+                        </TouchableOpacity> */}
 
                         <View className='flex-1 justify-center items-center'>
                             <Image

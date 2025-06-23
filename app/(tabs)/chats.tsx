@@ -2,6 +2,7 @@ import {View, Text, Image, ScrollView, SafeAreaView } from 'react-native'
 import React from 'react'
 import MessagePreview from '../components/MessagePreview'
 import { router } from 'expo-router'
+import TowaText from '../screens/messages/towaText'
 
 const towaClose = require('../../assets/images/towa_close.jpg')
 
@@ -16,7 +17,7 @@ const chats = () => {
 
     return (
         <View className='flex-1 bg-towasecondary'>
-            <SafeAreaView>
+            {/* <SafeAreaView>
                 <Text
                     className='text-4xl p-4 text-stone-800 mt-8'
                     style={{ fontFamily: "Sour Gummy Black" }}
@@ -37,7 +38,8 @@ const chats = () => {
                         ))}
                     </View>
                 </ScrollView>
-            </SafeAreaView>
+            </SafeAreaView> */}
+            <TowaText />
         </View>
     )
 }
