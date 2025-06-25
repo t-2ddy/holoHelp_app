@@ -182,7 +182,7 @@ const TowaText = () => {
         >
             <SafeAreaView className="flex-1">
                 <View className='flex-1'>
-                    <View className='flex-row items-center justify-between w-full px-6 py-4'>
+                    <View className='flex-row items-center w-full px-6'>
                         {/* <TouchableOpacity
                             className='p-2'
                             activeOpacity={.6}
@@ -196,7 +196,7 @@ const TowaText = () => {
                             />
                         </TouchableOpacity> */}
 
-                        <View className='flex-1 justify-center items-center'>
+                        <View className='flex-1 justify-center ml-11 items-center'>
                             <Image
                                 source={towaClose}
                                 className='size-12 rounded-full mb-1'

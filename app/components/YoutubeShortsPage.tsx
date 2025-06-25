@@ -3,23 +3,21 @@ import {
   View, 
   Text, 
   ScrollView, 
+  RefreshControl, 
   ActivityIndicator, 
   TouchableOpacity, 
   SafeAreaView, 
   Dimensions, 
+  Linking, 
   Image, 
   Platform,
-  RefreshControl,
-  Alert,
-  Linking
+  StatusBar
 } from 'react-native';
-import { WebView } from 'react-native-webview';
 import { client, config } from '../../lib/appwrite';
 import { Databases, Query } from 'react-native-appwrite';
 import { FontAwesome6 } from '@expo/vector-icons';
 
 const databases = new Databases(client);
-const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
 interface YouTubeShort {
   $id: string;
@@ -30,15 +28,80 @@ interface YouTubeShort {
   channel_icon: string;
 }
 
-const Home: React.FC = () => {
+interface YouTubeShortsViewerProps {
+  limit?: number;
+  showHeader?: boolean;
+  headerTitle?: string;
+}
+
+const YouTubeShortsViewer: React.FC<YouTubeShortsViewerProps> = ({
+  limit = 20,
+  showHeader = true,
+  headerTitle = 'Home'
+}) => {
   const [shorts, setShorts] = useState<YouTubeShort[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [playingIndex, setPlayingIndex] = useState<number | null>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [dimensions, setDimensions] = useState(Dimensions.get('window'));
   const scrollViewRef = useRef<ScrollView>(null);
-  const webViewRefs = useRef<{ [key: number]: WebView | null }>({});
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions(window);
+    });
+    return () => subscription?.remove();
+  }, []);
+
+  const { height: screenHeight, width: screenWidth } = dimensions;
+  
+  const isTablet = screenWidth >= 768;
+  const isDesktop = screenWidth >= 1024;
+  const isMobile = screenWidth < 768;
+  
+  const getResponsiveValues = () => {
+    if (isDesktop) {
+      return {
+        columns: 3,
+        cardWidth: (screenWidth - 80) / 3,
+        cardHeight: 320,
+        padding: 20,
+        gap: 16,
+        titleSize: 'text-lg',
+        descSize: 'text-base',
+        iconSize: 16
+      };
+    } else if (isTablet) {
+      return {
+        columns: 2,
+        cardWidth: (screenWidth - 60) / 2,
+        cardHeight: 280,
+        padding: 16,
+        gap: 12,
+        titleSize: 'text-base',
+        descSize: 'text-sm',
+        iconSize: 14
+      };
+    } else {
+      return {
+        columns: 1,
+        cardWidth: screenWidth - 32,
+        cardHeight: Math.min(screenHeight * 0.6, 400),
+        padding: 16,
+        gap: 16,
+        titleSize: 'text-base',
+        descSize: 'text-sm',
+        iconSize: 12
+      };
+    }
+  };
+
+  const responsive = getResponsiveValues();
+
+  const statusBarHeight = StatusBar.currentHeight || 0;
+  const safeAreaTop = Platform.OS === 'ios' ? 44 : statusBarHeight;
 
   useEffect(() => {
     fetchShorts();
@@ -51,8 +114,8 @@ const Home: React.FC = () => {
 
       const response = await databases.listDocuments(
         config.databaseId,
-        '6859c0b9002d3cb101f5',
-        [Query.limit(10), Query.orderDesc('$createdAt')]
+        config.youtubeShortsCollectionID,
+        [Query.limit(limit), Query.orderDesc('$createdAt')]
       );
       
       setShorts(response.documents as YouTubeShort[]);
@@ -70,258 +133,219 @@ const Home: React.FC = () => {
     fetchShorts();
   };
 
-  const handleScroll = (event: any) => {
-    const { contentOffset, layoutMeasurement } = event.nativeEvent;
-    const currentPage = Math.round(contentOffset.y / layoutMeasurement.height);
-    setCurrentIndex(currentPage);
+  const openVideo = async (videoId: string) => {
+    const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const youtubeMobileUrl = `youtube://watch?v=${videoId}`;
+    
+    try {
+      if (Platform.OS === 'ios' || Platform.OS === 'android') {
+        const supported = await Linking.canOpenURL(youtubeMobileUrl);
+        if (supported) {
+          await Linking.openURL(youtubeMobileUrl);
+        } else {
+          await Linking.openURL(youtubeUrl);
+        }
+      } else {
+        await Linking.openURL(youtubeUrl);
+      }
+    } catch (error) {
+      console.error('Error opening video:', error);
+      await Linking.openURL(youtubeUrl);
+    }
   };
 
   const getYouTubeThumbnail = (videoId: string) => {
     return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
   };
 
-  const playVideo = (index: number) => {
-    setPlayingIndex(index);
+  const handleScroll = (event: any) => {
+    const { contentOffset } = event.nativeEvent;
+    const currentPage = Math.round(contentOffset.y / responsive.cardHeight);
+    setCurrentIndex(currentPage);
   };
 
-  const openInYouTube = (videoId: string) => {
-    const url = `https://youtube.com/shorts/${videoId}`;
-    Linking.openURL(url);
+  const truncateText = (text: string, maxLength: number) => {
+    return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
   };
 
-  // YouTube Player API HTML
-  const getYouTubeHTML = (videoId: string, shouldPlay: boolean) => {
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <style>
-          * { margin: 0; padding: 0; }
-          body { background: black; overflow: hidden; }
-          #player { width: 100vw; height: 100vh; }
-        </style>
-      </head>
-      <body>
-        <div id="player"></div>
-        <script>
-          var tag = document.createElement('script');
-          tag.src = "https://www.youtube.com/iframe_api";
-          var firstScriptTag = document.getElementsByTagName('script')[0];
-          firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+  const renderCard = (short: YouTubeShort, index: number) => (
+    <TouchableOpacity 
+      key={short.$id}
+      onPress={() => openVideo(short.video_id)}
+      style={{ 
+        width: responsive.cardWidth,
+        height: responsive.cardHeight,
+        marginBottom: responsive.gap,
+        marginRight: responsive.columns > 1 && (index + 1) % responsive.columns !== 0 ? responsive.gap : 0
+      }}
+      className="bg-white rounded-2xl overflow-hidden shadow-lg"
+      activeOpacity={0.9}
+    >
+      <View style={{ height: responsive.cardHeight * 0.65 }} className="relative">
+        <Image
+          source={{ uri: getYouTubeThumbnail(short.video_id) }}
+          style={{ 
+            width: '100%', 
+            height: '100%',
+            resizeMode: 'cover'
+          }}
+        />
+      </View>
+      
+      <View style={{ height: responsive.cardHeight * 0.35 }} className="p-3 bg-white justify-between">
+        <View className="flex-1">
+          <Text 
+            className={`text-stone-800 font-bold mb-1 ${responsive.titleSize}`}
+            style={{ fontFamily: "Sour Gummy Black" }}
+            numberOfLines={2}
+          >
+            {short.title}
+          </Text>
+          
+          <Text 
+            className={`text-stone-600 ${responsive.descSize}`}
+            numberOfLines={isDesktop ? 3 : 2}
+          >
+            {truncateText(short.description, isDesktop ? 120 : 80)}
+          </Text>
+        </View>
+        
+        <View className="flex-row items-center justify-between mt-2">
+          <View className="flex-row items-center flex-1">
+            {short.channel_icon && (
+              <Image
+                source={{ uri: short.channel_icon }}
+                style={{ width: 20, height: 20 }}
+                className="rounded-full mr-2"
+              />
+            )}
+            <Text className="text-stone-500 text-xs flex-1" numberOfLines={1}>
+              Tap to watch
+            </Text>
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
-          var player;
-          function onYouTubeIframeAPIReady() {
-            player = new YT.Player('player', {
-              height: '100%',
-              width: '100%',
-              videoId: '${videoId}',
-              playerVars: {
-                'playsinline': 1,
-                'autoplay': ${shouldPlay ? 1 : 0},
-                'controls': 1,
-                'modestbranding': 1,
-                'rel': 0,
-                'showinfo': 0,
-                'fs': 1,
-                'loop': 1,
-                'playlist': '${videoId}'
-              },
-              events: {
-                'onReady': onPlayerReady,
-                'onStateChange': onPlayerStateChange
-              }
-            });
+  const renderGrid = () => {
+    if (responsive.columns === 1) {
+      return shorts.map((short, index) => renderCard(short, index));
+    }
+
+    const rows = [];
+    for (let i = 0; i < shorts.length; i += responsive.columns) {
+      const rowItems = shorts.slice(i, i + responsive.columns);
+      rows.push(
+        <View 
+          key={`row-${i}`} 
+          className="flex-row justify-between"
+          style={{ paddingHorizontal: responsive.padding }}
+        >
+          {rowItems.map((short, index) => renderCard(short, i + index))}
+          {rowItems.length < responsive.columns && 
+            Array.from({ length: responsive.columns - rowItems.length }).map((_, emptyIndex) => (
+              <View 
+                key={`empty-${emptyIndex}`}
+                style={{ width: responsive.cardWidth, height: 0 }}
+              />
+            ))
           }
-
-          function onPlayerReady(event) {
-            if (${shouldPlay}) {
-              event.target.playVideo();
-            }
-          }
-
-          function onPlayerStateChange(event) {
-            if (event.data == YT.PlayerState.ENDED) {
-              player.playVideo();
-            }
-          }
-
-          // Message handler for play/pause
-          window.addEventListener('message', function(e) {
-            if (e.data === 'play' && player && player.playVideo) {
-              player.playVideo();
-            } else if (e.data === 'pause' && player && player.pauseVideo) {
-              player.pauseVideo();
-            }
-          });
-        </script>
-      </body>
-      </html>
-    `;
+        </View>
+      );
+    }
+    return rows;
   };
 
   if (loading && !refreshing) {
     return (
-      <View className="flex-1 justify-center items-center bg-black">
+      <View className="flex-1 justify-center items-center bg-towasecondary">
         <ActivityIndicator size="large" color="#8058ac" />
-        <Text className="text-xl text-white mt-4">Loading shorts...</Text>
+        <Text 
+          className="text-xl text-stone-800 mt-4"
+          style={{ fontFamily: "Sour Gummy Black" }}
+        >
+          Loading shorts...
+        </Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View className="flex-1 justify-center items-center bg-black p-4">
-        <Text className="text-xl text-red-500 text-center mb-4">{error}</Text>
-        <TouchableOpacity onPress={fetchShorts} className="bg-towagreen px-6 py-3 rounded-xl">
-          <Text className="text-stone-800 font-bold">Try Again</Text>
+      <View className="flex-1 justify-center items-center bg-towasecondary p-4">
+        <Text 
+          className="text-xl text-red-600 text-center mb-4"
+          style={{ fontFamily: "Sour Gummy Black" }}
+        >
+          {error}
+        </Text>
+        <TouchableOpacity 
+          onPress={fetchShorts}
+          className="bg-towagreen p-3 rounded-xl"
+        >
+          <Text 
+            className="text-stone-800"
+            style={{ fontFamily: "Sour Gummy Black" }}
+          >
+            Try Again
+          </Text>
         </TouchableOpacity>
       </View>
     );
   }
 
+  if (shorts.length === 0) {
+    return (
+      <View className="flex-1 justify-center items-center bg-towasecondary p-4">
+        <Text 
+          className="text-xl text-stone-800 text-center"
+          style={{ fontFamily: "Sour Gummy Black" }}
+        >
+          No shorts available yet. Run your scraper to collect some videos!
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <View className="flex-1 bg-black">
-      <SafeAreaView className="flex-1">
-        {/* Header */}
-        <View className="absolute top-12 left-0 right-0 z-10 flex-row justify-between items-center px-4">
-          <Text className="text-white text-3xl font-bold" style={{ fontFamily: "Sour Gummy Black" }}>
-            Shorts
-          </Text>
-          <Text className="text-white text-sm opacity-70">
-            {currentIndex + 1} / {shorts.length}
+    <SafeAreaView className="flex-1 bg-towasecondary">
+      {showHeader && (
+        <View 
+          className="flex-row justify-between items-center bg-towasecondary"
+          style={{ paddingHorizontal: responsive.padding, paddingVertical: 12 }}
+          onLayout={(event) => {
+            const { height } = event.nativeEvent.layout;
+            setHeaderHeight(height);
+          }}
+        >
+          <Text 
+            className={`text-stone-800 ${isDesktop ? 'text-4xl' : isTablet ? 'text-3xl' : 'text-3xl'}`}
+            style={{ fontFamily: "Sour Gummy Black" }}
+          >
+            {headerTitle}
           </Text>
         </View>
+      )}
 
-        <ScrollView
-          ref={scrollViewRef}
-          pagingEnabled
-          showsVerticalScrollIndicator={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="white" />
-          }
-        >
-          {shorts.map((short, index) => (
-            <View key={short.$id} style={{ width: screenWidth, height: screenHeight * 0.9 }}>
-              {playingIndex === index ? (
-                // WebView with YouTube player
-                <View className="flex-1">
-                  <WebView
-                    ref={(ref) => { webViewRefs.current[index] = ref; }}
-                    source={{ html: getYouTubeHTML(short.video_id, true) }}
-                    style={{ flex: 1, backgroundColor: 'black' }}
-                    allowsInlineMediaPlayback={true}
-                    mediaPlaybackRequiresUserAction={false}
-                    javaScriptEnabled={true}
-                    domStorageEnabled={true}
-                    mixedContentMode="compatibility"
-                    originWhitelist={['*']}
-                    onShouldStartLoadWithRequest={() => true}
-                  />
-                  
-                  {/* Close button */}
-                  <TouchableOpacity 
-                    className="absolute top-4 right-4 bg-black/50 rounded-full p-2"
-                    onPress={() => setPlayingIndex(null)}
-                  >
-                    <FontAwesome6 name="xmark" size={24} color="white" />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                // Thumbnail with play button
-                <TouchableOpacity 
-                  activeOpacity={0.95}
-                  onPress={() => playVideo(index)}
-                  className="flex-1"
-                >
-                  <Image
-                    source={{ uri: getYouTubeThumbnail(short.video_id) }}
-                    style={{ width: '100%', height: '100%' }}
-                    resizeMode="cover"
-                  />
-                  
-                  {/* Play button overlay */}
-                  <View className="absolute inset-0 justify-center items-center">
-                    <View className="bg-black/60 rounded-full p-6">
-                      <FontAwesome6 name="play" size={50} color="white" style={{ marginLeft: 5 }} />
-                    </View>
-                  </View>
-
-                  {/* Overlay UI */}
-                  <View className="absolute inset-0 pointer-events-box-none">
-                    {/* Interaction buttons */}
-                    <View className="absolute right-4 bottom-32 gap-5">
-                      <TouchableOpacity className="items-center mb-5" onPress={() => Alert.alert('Like!')}>
-                        <View className="bg-white/20 rounded-full p-3">
-                          <FontAwesome6 name="heart" size={28} color="white" />
-                        </View>
-                        <Text className="text-white text-xs mt-1">Like</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity className="items-center mb-5" onPress={() => Alert.alert('Comments!')}>
-                        <View className="bg-white/20 rounded-full p-3">
-                          <FontAwesome6 name="comment" size={28} color="white" />
-                        </View>
-                        <Text className="text-white text-xs mt-1">Comment</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity className="items-center mb-5" onPress={() => Alert.alert('Share!')}>
-                        <View className="bg-white/20 rounded-full p-3">
-                          <FontAwesome6 name="share" size={28} color="white" />
-                        </View>
-                        <Text className="text-white text-xs mt-1">Share</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity 
-                        className="items-center" 
-                        onPress={() => openInYouTube(short.video_id)}
-                      >
-                        <View className="bg-red-600 rounded-full p-3">
-                          <FontAwesome6 name="youtube" size={28} color="white" />
-                        </View>
-                        <Text className="text-white text-xs mt-1">YouTube</Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Video info */}
-                    <View className="absolute bottom-4 left-4 right-20">
-                      <View className="flex-row items-center mb-2">
-                        {short.channel_icon && (
-                          <Image source={{ uri: short.channel_icon }} className="w-10 h-10 rounded-full mr-3" />
-                        )}
-                        <TouchableOpacity className="bg-white/20 px-3 py-1 rounded-full">
-                          <Text className="text-white text-sm font-bold">Follow</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <Text 
-                        className="text-white text-lg font-bold mb-1" 
-                        style={{ textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 3 }}
-                        numberOfLines={2}
-                      >
-                        {short.title}
-                      </Text>
-                      <Text 
-                        className="text-white/80 text-sm" 
-                        style={{ textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 3 }}
-                        numberOfLines={2}
-                      >
-                        {short.description.substring(0, 100)}...
-                      </Text>
-                      <TouchableOpacity onPress={() => playVideo(index)}>
-                        <Text className="text-white/60 text-xs mt-2">Tap to play video</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              )}
-            </View>
-          ))}
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+      <ScrollView
+        ref={scrollViewRef}
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        className="bg-towasecondary"
+        contentContainerStyle={{ 
+          padding: responsive.columns === 1 ? responsive.padding : 0,
+          paddingBottom: 40 
+        }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {renderGrid()}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
-export default Home;
+export default YouTubeShortsViewer;
