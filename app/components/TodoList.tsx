@@ -123,7 +123,7 @@ const TodoList: React.FC = () => {
   };
 
   const renderItem = ({ item }: { item: any }) => (
-    <View className="flex-row justify-between items-center bg-towaprimary p-4 rounded-xl mb-3">
+    <View className="flex-row justify-between items-center p-4 rounded-xl mb-3">
       <TouchableOpacity 
         onPress={() => toggleStatus(item.$id, item.status)}
         className="flex-row items-center flex-1 mr-2"
@@ -171,7 +171,7 @@ const TodoList: React.FC = () => {
           className="flex-1 bg-towasecondary mr-2 px-4 py-3 rounded-xl text-stone-800 text-lg"
           value={newTask}
           onChangeText={setNewTask}
-          placeholder="Add a new task"
+          placeholder="Add something todo :3"
           placeholderTextColor="#6B7280"
           style={{ fontFamily: "Sour Gummy Black" }}
         />
@@ -194,7 +194,7 @@ const TodoList: React.FC = () => {
       >
         {tasks.length > 0 ? (
           tasks.map(item => (
-            <View key={item.$id} className="flex-row justify-between items-center bg-towaprimary p-4 rounded-xl mb-3">
+            <View key={item.$id} className="flex-row justify-between items-center bg-towasecondary p-4 rounded-xl mb-3">
               <TouchableOpacity 
                 onPress={() => toggleStatus(item.$id, item.status)}
                 className="flex-row items-center flex-1 mr-2"
@@ -212,8 +212,8 @@ const TodoList: React.FC = () => {
                 </Text>
               </TouchableOpacity>
               
-              <TouchableOpacity onPress={() => removeTask(item.$id)} className="bg-red-500 w-8 h-8 rounded-full justify-center items-center">
-                <FontAwesome6 name="trash" size={14} color="white" />
+              <TouchableOpacity onPress={() => removeTask(item.$id)} className=" size-8 rounded-full justify-center items-center">
+                <FontAwesome6 name="xmark" size={20} color="white" />
               </TouchableOpacity>
             </View>
           ))

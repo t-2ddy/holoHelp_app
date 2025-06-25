@@ -228,8 +228,7 @@ const TowaText = () => {
                         <View className='bg-towasecondary flex-1 w-full mt-2'>
                             <ScrollView 
                               ref={scrollViewRef}
-                              className="flex-1 px-3 py-2"
-                              contentContainerStyle={{ paddingBottom: 10 }}
+                              className="flex-1 px-3 py-2 pb-10"
                             >
                                 {messages.map((msg) => (
                                   <TextBubble 
@@ -247,13 +246,13 @@ const TowaText = () => {
                                     </View>
                                 )}
                             </ScrollView>
-                            <Animated.View className="flex-row items-center px-2 py-2 bg-towaprimary border-0">
+                            <Animated.View className="flex-row items-center px-2 py-2 border-0 mb-4">
                               <View className="flex-1 flex-row items-center bg-towa3 rounded-full px-4 py-2 mr-2">
                                 <TextInput
                                     className="flex-1 max-h-12 items-center justify-center"
                                     value={message}
                                     onChangeText={setMessage}
-                                    placeholder="Ask Towa to add tasks, mark them done, or just chat!"
+                                    placeholder="txt here!"
                                     placeholderTextColor="#8e8e93"
                                     multiline
                                     scrollEnabled={true}

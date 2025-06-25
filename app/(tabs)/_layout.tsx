@@ -88,21 +88,6 @@ const TabsLayout = () => {
                     ),
                 }}
             />
-            <Tabs.Screen
-                name="settings"
-                options={{
-                    title: '',
-                    headerShown: false,
-                    tabBarIcon: ({ color, focused }) => (
-                        <TabIcon 
-                            icon="gear"
-                            color={color}
-                            size={24}
-                            focused={focused}
-                        />
-                    ),
-                }}
-            />
         </Tabs>
     )
 }

@@ -1,7 +1,7 @@
 import { View, Text, Image, SafeAreaView, TouchableOpacity } from 'react-native'
 import React, { useState } from 'react'
 import { FontAwesome6 } from '@expo/vector-icons'
-import GetTweets from '../components/GetTweet'
+import ShuffledContent from '../components/ShuffledContent'
 
 const towaPoint = require('../../assets/images/towa_point.png')
 
@@ -43,7 +43,7 @@ const discover = () => {
                     </TouchableOpacity>
                 </View>
                 
-                <GetTweets translateMode={translateMode} />
+                <ShuffledContent translateMode={translateMode} />
             </SafeAreaView>
         </View>
     )
