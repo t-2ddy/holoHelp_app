@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "package": "com.t2ddy.holo"
+      "bundleIdentifier": "com.t2ddy.holo"
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +18,6 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.t2ddy.holo"
-
     },
     "web": {
       "bundler": "metro",
@@ -37,9 +36,16 @@
         }
       ],
       [
-      "expo-font",
+        "expo-font",
         {
           "fonts": ["./assets/fonts/Sour Gummy Black.ttf"]
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#ffffff"
         }
       ]
     ],
@@ -51,7 +57,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": "c09601cd-b168-41dc-8a3f-7d56d64cb568"
+        "projectId": "540ca42c-3086-43e6-9878-376d7ebe76ee"
       }
     },
     "owner": "t2ddy"
