@@ -24,8 +24,10 @@ const TowaText = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [showTodoPopup, setShowTodoPopup] = useState(false);
     const [keyboardHeight, setKeyboardHeight] = useState(0);
+    const [isFocused, setIsFocused] = useState(false);
     const keyboardAnim = useRef(new Animated.Value(0)).current;
     const scrollViewRef = useRef<ScrollView>(null);
+    const textInputRef = useRef<TextInput>(null);
     
     useEffect(() => {
         const keyboardWillShowListener = Keyboard.addListener(
@@ -68,6 +70,28 @@ const TowaText = () => {
     
     const dismissKeyboard = () => {
         Keyboard.dismiss();
+        textInputRef.current?.blur();
+    };
+    
+    const handleInputFocus = () => {
+        setIsFocused(true);
+    };
+    
+    const handleInputBlur = () => {
+        setIsFocused(false);
+    };
+    
+    const handleKeyPress = (e: any) => {
+        if (Platform.OS === 'web') {
+            if (e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+    };
+    
+    const focusInput = () => {
+        textInputRef.current?.focus();
     };
     
     useEffect(() => {
@@ -145,6 +169,10 @@ const TowaText = () => {
         setMessage('');
         setIsLoading(true);
         
+        setTimeout(() => {
+            textInputRef.current?.focus();
+        }, 100);
+        
         try {
             const botResponse = await chatService.sendMessage(user.$id, messageToSend);
             
@@ -170,7 +198,6 @@ const TowaText = () => {
             setMessages(prevMessages => [...prevMessages, errorMsg]);
         } finally {
             setIsLoading(false);
-            Keyboard.dismiss();
         }
     };
    
@@ -183,19 +210,6 @@ const TowaText = () => {
             <SafeAreaView className="flex-1">
                 <View className='flex-1'>
                     <View className='flex-row items-center w-full px-6'>
-                        {/* <TouchableOpacity
-                            className='p-2'
-                            activeOpacity={.6}
-                            onPress={() => router.replace('/(tabs)/chats')}
-                        >
-                            <FontAwesome6
-                                name="angle-left"
-                                size={26}
-                                color="#ded9f6"
-                                solid={'focused'}
-                            />
-                        </TouchableOpacity> */}
-
                         <View className='flex-1 justify-center ml-11 items-center'>
                             <Image
                                 source={towaClose}
@@ -246,35 +260,87 @@ const TowaText = () => {
                                     </View>
                                 )}
                             </ScrollView>
-                            <Animated.View className="flex-row items-center px-2 py-2 border-0 mb-4">
-                              <View className="flex-1 flex-row items-center bg-towa3 rounded-full px-4 py-2 mr-2">
-                                <TextInput
-                                    className="flex-1 max-h-12 items-center justify-center"
-                                    value={message}
-                                    onChangeText={setMessage}
-                                    placeholder="txt here!"
-                                    placeholderTextColor="#8e8e93"
-                                    multiline
-                                    scrollEnabled={true}
-                                    editable={!isLoading}
+                            
+                            <TouchableWithoutFeedback onPress={focusInput}>
+                                <Animated.View 
+                                    className="px-2 py-2 items-center"
                                     style={{
-                                        textAlignVertical: 'center'
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between'
                                     }}
-                                />
-                              </View>
-                              <TouchableOpacity 
-                                  className="h-8 w-8 rounded-full bg-towasecondary items-center justify-center"
-                                  disabled={!message.trim() || isLoading}
-                                  onPress={sendMessage}
-                              >
-                                  <FontAwesome6
-                                      name="paper-plane"
-                                      size={16}
-                                      color={message.trim() && !isLoading ? "white" : "#8e8e93"}
-                                      solid
-                                  />
-                              </TouchableOpacity>
-                            </Animated.View>
+                                >
+                                    <TouchableWithoutFeedback onPress={focusInput}>
+                                        <View 
+                                            className={`flex-1 rounded-full p-1 mx-2 mb-2 transition-all duration-200 ${
+                                                isFocused ? 'bg-white shadow-lg' : 'bg-towa3'
+                                            }`}
+                                            style={{
+                                                borderWidth: isFocused ? 2 : 0,
+                                                borderColor: isFocused ? '#7c3aed' : 'transparent',
+                                                ...(Platform.OS === 'web' && {
+                                                    cursor: 'text',
+                                                    boxShadow: isFocused ? '0 0 0 3px rgba(124, 58, 237, 0.1)' : 'none'
+                                                })
+                                            }}
+                                        >
+                                            <TextInput
+                                                ref={textInputRef}
+                                                className="w-full px-3"
+                                                value={message}
+                                                onChangeText={setMessage}
+                                                placeholder="txt from here..."
+                                                placeholderTextColor="#8e8e93"
+                                                multiline
+                                                scrollEnabled={true}
+                                                editable={!isLoading}
+                                                onFocus={handleInputFocus}
+                                                onBlur={handleInputBlur}
+                                                onKeyPress={handleKeyPress}
+                                                returnKeyType="send"
+                                                onSubmitEditing={sendMessage}
+                                                blurOnSubmit={false}
+                                                style={{
+                                                    textAlignVertical: 'center',
+                                                    maxHeight: 120,
+                                                    minHeight: 40,
+                                                    fontSize: 16,
+                                                    lineHeight: 20,
+                                                    color: '#1f2937',
+                                                    ...(Platform.OS === 'web' && {
+                                                        outline: 'none',
+                                                        resize: 'none' as any,
+                                                        fontFamily: 'system-ui, -apple-system, sans-serif'
+                                                    })
+                                                }}
+                                            />
+                                        </View>
+                                    </TouchableWithoutFeedback>
+                                    
+                                    <TouchableOpacity 
+                                        className={`items-center justify-center size-12 rounded-full mr-4 ml-2 mb-2 transition-all duration-200 ${
+                                            message.trim() && !isLoading 
+                                                ? 'bg-towaprimary shadow-lg scale-105' 
+                                                : 'bg-towa3'
+                                        }`}
+                                        disabled={!message.trim() || isLoading}
+                                        onPress={sendMessage}
+                                        style={{
+                                            ...(Platform.OS === 'web' && {
+                                                cursor: message.trim() && !isLoading ? 'pointer' : 'default',
+                                                transform: message.trim() && !isLoading ? 'scale(1.05)' : 'scale(1)'
+                                            })
+                                        }}
+                                    >
+                                        <FontAwesome6
+                                            name="paper-plane"
+                                            size={16}
+                                            color={message.trim() && !isLoading ? "white" : "#8e8e93"}
+                                            solid
+                                        />
+                                    </TouchableOpacity>
+                                </Animated.View>
+                            </TouchableWithoutFeedback>
                         </View>
                     </TouchableWithoutFeedback>
                 </View>

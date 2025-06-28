@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, SafeAreaView, Text, ScrollView } from 'react-native';
 import TodoList from '../components/TodoList';
+import MessagePreviewWidget from '../components/MessagePreviewWidget';
 
 const Home: React.FC = () => {
   return (
@@ -15,7 +16,8 @@ const Home: React.FC = () => {
             </Text>
         </View>
         <ScrollView>
-          <View className='bg-towaprimary mx-4 rounded-3xl'>
+          <MessagePreviewWidget />
+          <View className='bg-towaprimary mx-4 rounded-3xl mt-6'>
             <Text
                 className='text-2xl p-4 text-stone-800 mt-4'
                 style={{ fontFamily: "Sour Gummy Black" }}
